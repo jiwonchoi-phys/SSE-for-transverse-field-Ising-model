@@ -39,11 +39,10 @@ int main(int argc, char **argv)
 	int *last = new int[L2];	
   int *vertex = new int[M];
 	int *link = new int[4*M];
-	int *flag = new int[4*M];
+	int *stack = new int[4*M];
 
   //std::vector<int> *constterm = new std::vector<int>[L2];
   //std::vector<int> *flipterm = new std::vector<int>[L2];
-	std::vector<gammaterm> *gammaseq = new std::vector<gammaterm>[L2];
 
   // Load interaction and transverse-field from file
   LoadInteractionFromFile("./Jconfig",2*L2,J);
@@ -84,25 +83,22 @@ int main(int argc, char **argv)
   
   // nbond to nbond+L2-1 : gamma term
   // nbond+L2 to nbond+2*L2-1 : Spin-flipping term
-  for (int eq=0;eq<100;++eq){
+  for (int eq=0;eq<1000;++eq){
     DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
     AdjustM(&M,n,opstring,vertex,link);
   }
   for (int eq=0;eq<1000;++eq){
-    DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
-		Partition(L2,M,nbond,opstring,gammaseq);
-		ConstructVertexAndLink(L2,M,nbond,bsites,opstring,vertex,link,first,last,flag);
-		//std::cout << 4*n << "\n";
-		//for (i=0;i<L2;++i) std::cout << first[i] << " ";
-		//std::cout << "\n";
-		//for (i=0;i<L2;++i) std::cout << last[i] << " ";
-		//std::cout << "\n";
-		for (i=0;i<M;++i){
-			for (int j=0;j<4;++j){
-				std::cout << link[4*i+j] << " ";
-			}	std::cout << "\n";
-		}
+		ConstructVertexAndLink(L2,M,n,nbond,bsites,opstring,vertex,link,first,last,stack);
   }
+	//for (i=0;i<4*M;i+=4){
+		//if (link[i] != -1)
+		//std::cout << i << " " << link[link[i]] << "\n";
+		//printf("%d %d %d %d\n",link[i],link[i+1],link[i+2],link[i+3]);
+	//}
+	//for (i=0;i<n;i++){
+	//	std::cout << first[i] << " " << last[i] << "\n";
+	//}
+	
 	
 	
 	

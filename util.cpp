@@ -53,7 +53,7 @@ void DiagonalUpdate(int L2, int M, int nbond, int *n, int *spin, int **bsites, i
   nop = L2+nbond;
   for (int m=0;m<M;++m){
     op = opstring[m];
-    if (op == -1){
+    if (op == -1){ // If empty, add new operator
       if (real(gen)*(M-(*n))<aprob){
         b = LowerBound(CDtable,nop,real(gen));
         if (b<nbond){
@@ -106,7 +106,7 @@ void AdjustM(int *M, int n, int* &opstring, int* &vertex, int* &link)
 	
   *M = newM;
 }
-
+/*
 void Partition(int L2, int M, int nbond, int *opstring, std::vector<gammaterm> *gammaseq)
 {
 	int op;
@@ -121,44 +121,66 @@ void Partition(int L2, int M, int nbond, int *opstring, std::vector<gammaterm> *
     if (op >= nbond) gammaseq[(op-nbond)%L2].push_back(gammaterm(m,(op-nbond)/L2));
   }
 }
+*/
 
-void ConstructVertexAndLink(int L2, int M, int nbond, int** bsites, int* opstring, int* vertex, int* link, int* first, int* last, int* flag)
+void ConstructVertexAndLink(int L2, int M, int n, int nbond, int** bsites, int* opstring, int* vertex, int* link, int* first, int* last, int* stack)
 {
 	//int i,m,n,op,s1,s2;
-	int m,s1,s2,v0,v1,v2;
-	int op;
-	n=0;
+	int i,s1,s2,v0,v1,v2;
+	int op,sp;
 	// Initialize first and last
 	for (i=0;i<L2;++i) first[i] = last[i] = -1;
-	for (m=0;m<4*M;m+=4){
-		op = opstring[m/4];
+	for (i=0;i<4*M;++i) link[i] = -1;
+
+	// Construct link and vertex
+	for (v0=0;v0<4*M;v0+=4){
+		op = opstring[v0/4];
 		if (op==-1){
-			v1 = first[s1];
-			if (v1 != -1){
-				v2 = last[s1];
-				vertex[v2] = v1;
-				vertex[v1] = v2;
-			}
+			// ACtion for empty operator
 		} else if (op<nbond){
+			// Ising term
 			s1 = bsites[0][op];
 			s2 = bsites[1][op];
 			v1 = last[s1];
 			v2 = last[s2];
 			if (v1 != -1){
-				vertex[v1] = v0;
-				vertex[v0] = v1;
+				link[v1] = v0;
+				link[v0] = v1;
 			} else first[s1] = v0;
 			if (v2 != -1){
-				vertex[v2] = v0+1;
-				vertex[v0+1] = v2;
+				link[v2] = v0+1;
+				link[v0+1] = v2;
 			} else first[s2] = v0+1;
 			last[s1] = v0+2;
 			last[s2] = v0+3;
 		} else if (op<nbond+L2){
-			// To do:
-			//	 1. construct vertex and link for the constant and flip term
-			
+			// constant term
+			op -= nbond;
+			v1 = last[op];
+			if (v1 != -1){
+				link[v1] = v0;
+				link[v0] = v1;
+			} else first[op] = v0+1;
+			last[op] = v0+2;
+		} else{
+			op -= L2+nbond;
+			v1 = last[op];
+			if (v1 != -1){
+				link[v1] = v0;
+				link[v0] = v1;
+			} else first[op] = v0+1;
+			last[op] = v0+2;
 		}
+	}
+	for (i=0;i<L2;++i){
+		v1 = first[i];
+		if (v1!=-1){
+			v2 = last[i];
+			link[v2] = v1;
+			link[v1] = v2;
+		}
+	}
 }
+
 
 
