@@ -18,8 +18,9 @@ namespace{
 
 void LoadInteractionFromFile(std::string filepath, int size, double *coupling);
 int LowerBound(double *list, int length, double target);
-void DiagonalUpdate(int L2, int M, int nbond, int *n, int *spin, int **bsites, int *opstring, double *CDtable, double aprob);
-void AdjustM(int *M, int n, int* &opstring, int* &vertex, int* &link);
-void ConstructVertexAndLink(int L2, int M, int n, int nbond, int** bsites, int* opstring, int* vertex, int* link, int* first, int* last, int* stack);
+void DiagonalUpdate(int L2, int M, int nbond, int *n, char *spin, int **bsites, int *opstring, double *CDtable, double aprob);
+void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &stack, char* &visitedleg);
+void ConstructVertexAndLink(int L2, int M, int n, int nbond, char* spin, int** bsites, int* opstring, char* vertex, int* link, int* first, int* last, int* stack);
+void LoopUpdate(int L2,int M,int n,int nbond,int *opstring,int *link,char *visitedleg,int *stack,char *vertex);
 //void Partition(int L2, int M, int nbond, int *opstring, std::vector<gammaterm> *gammaseq);
 #endif

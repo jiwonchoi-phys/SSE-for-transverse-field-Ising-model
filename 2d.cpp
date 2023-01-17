@@ -26,7 +26,7 @@ int main(int argc, char **argv)
   n=0;
 
 
-  int *spin = new int[L2];
+  char *spin = new char[L2];
   double *J = new double[nbond];
   double *G = new double[L2];
   double *CDtable = new double[L2+nbond];
@@ -37,9 +37,10 @@ int main(int argc, char **argv)
 
 	int *first = new int[L2];	
 	int *last = new int[L2];	
-  int *vertex = new int[M];
+  char *vertex = new char[M];
 	int *link = new int[4*M];
 	int *stack = new int[4*M];
+	char *visitedleg = new char[4*M];
 
   //std::vector<int> *constterm = new std::vector<int>[L2];
   //std::vector<int> *flipterm = new std::vector<int>[L2];
@@ -85,19 +86,22 @@ int main(int argc, char **argv)
   // nbond+L2 to nbond+2*L2-1 : Spin-flipping term
   for (int eq=0;eq<1000;++eq){
     DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
-    AdjustM(&M,n,opstring,vertex,link);
+    AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
   }
   for (int eq=0;eq<1000;++eq){
-		ConstructVertexAndLink(L2,M,n,nbond,bsites,opstring,vertex,link,first,last,stack);
+		ConstructVertexAndLink(L2,M,n,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
+		LoopUpdate(L2,M,n,nbond,opstring,link,visitedleg,stack,vertex);
   }
+	
 	//for (i=0;i<4*M;i+=4){
 		//if (link[i] != -1)
 		//std::cout << i << " " << link[link[i]] << "\n";
 		//printf("%d %d %d %d\n",link[i],link[i+1],link[i+2],link[i+3]);
 	//}
-	//for (i=0;i<n;i++){
+	//for (i=0;i<L2;i++){
 	//	std::cout << first[i] << " " << last[i] << "\n";
 	//}
+	//for (i=0;i<M;++i) std::cout << vertex[i] << "\n";
 	
 	
 	
