@@ -206,7 +206,7 @@ void ConstructVertexAndLink(int L2, int M, int n, int nbond, char* spin, int** b
 
 void LoopUpdate(int L2,int M,int n,int nbond,int *opstring,int *link,char *visitedleg,int *stack,char *vertex)
 {
-	int i,v,leg,l,pos;
+	int i,v,leg,l,pos,legpos;
 	int sp=1;
 	int spmax=1;
 	for (i=0;i<4*M;++i) visitedleg[i] = 0;
@@ -218,38 +218,55 @@ void LoopUpdate(int L2,int M,int n,int nbond,int *opstring,int *link,char *visit
 	stack[0] = leg;
 
 	while(sp){
-		leg = stack[--sp];
+		leg = link[stack[--sp]];
+		legpos = leg%4;
 		pos = leg/4;
-		if (visitedleg[leg] == 1) continue;
+		if (Visited(leg,visitedleg,link)) continue;
 		visitedleg[leg] = 1;
-		if (sp>spmax) spmax = sp;
+		visitedleg[link[leg]] = 1;
 		
 		// If vertex is Ising type	
 		if (vertex[pos]/2 == 0){
 			// add all leg to stack
-			for (l=0;l<4;++l){
-				if (visitedleg[link[4*pos+l]] == 0) stack[sp++] = link[4*pos+l];
-			}
+			for (l=0;l<4;++l) if (!Visited(leg,visitedleg,link)) stack[sp++] = 4*pos+l;
 			// change vertex type
 			vertex[pos] = (vertex[pos]+1)%2;
 		// If vertex is constant type
 		} else if (vertex[pos]/2 == 1){
-			if (visitedleg[link[leg]] == 0) stack[sp++] = link[leg];
-			if (vertex[pos] == 2) vertex[pos] = 5;
-			else vertex[pos] = 4;
+			if (!Visited(leg,visitedleg,link)) stack[sp++] = link[leg];
+			if (legpos==0){
+			  if (vertex[pos] == 2) vertex[pos] = 5;
+			  else vertex[pos] = 4;
+			} else{
+				if (vertex[pos] == 2) vertex[pos] = 4;
+				else vertex[pos] = 5;
+			}
 		// If vertex is flip type
 		} else{
-			if (visitedleg[link[leg]] == 0) stack[sp++] = link[leg];
-			if (vertex[pos] == 4) vertex[pos] = 3;
-			else vertex[pos] = 2;
+			if (!Visited(leg,visitedleg,link)) stack[sp++] = link[leg];
+			if (legpos == 0){
+				if (vertex[pos] == 4) vertex[pos] = 3;
+				else vertex[pos] = 2;
+			} else{
+				if (vertex[pos] == 4) vertex[pos] = 2;
+				else vertex[pos] = 3;
+			}
 		}
-
 		visitedleg[leg] = 1;
 	}
-	std::cout << spmax << "\n";
 }
 
-void UpdateSpinAndOpstring
+void UpdateSpinAndOpstring(int L2, char* spin, int *opstring, char* vertex, int* first, int* last)
+{
+	int i;
+	for (i=0;i<L2;++i){
+		//std::cout << first[i] << " " << (int)vertex[first[i]/4] << " " << (int)vertex[last[i]/4] << " " << (int)spin[i] << "\n";
+		if (vertex[first[i]/4]>3 || vertex[last[i]/4]>3) std::cout << (int)vertex[first[i]/4] << " " << (int)vertex[last[i]/4] << "\n";
+	}
+}
 
-
+bool Visited(int leg, char* visitedleg, int* link)
+{
+	return visitedleg[leg] || visitedleg[link[leg]];
+}
 

@@ -91,6 +91,7 @@ int main(int argc, char **argv)
   for (int eq=0;eq<1000;++eq){
 		ConstructVertexAndLink(L2,M,n,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
 		LoopUpdate(L2,M,n,nbond,opstring,link,visitedleg,stack,vertex);
+		UpdateSpinAndOpstring(L2,spin,opstring,vertex,first,last);
   }
 	
 	//for (i=0;i<4*M;i+=4){
@@ -101,7 +102,7 @@ int main(int argc, char **argv)
 	//for (i=0;i<L2;i++){
 	//	std::cout << first[i] << " " << last[i] << "\n";
 	//}
-	//for (i=0;i<M;++i) std::cout << vertex[i] << "\n";
+	//for (i=0;i<M;++i) std::cout << (int)vertex[i] << "\n";
 	
 	
 	
