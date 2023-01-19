@@ -27,10 +27,11 @@ int main(int argc, char **argv)
 	int binsize = atoi(argv[6]);
 	int repeat = atoi(argv[7]);
 	int sidx = atoi(argv[8]);
-  int L2,nbond;
-  double sumofJG,beta_sumofJG;
-	double mag,mag2,mag4,magt0;
-	double Mag,Mag2,Mag4,Magt0;
+  int L2,nbond,flippos;
+  double sumofJG,beta_sumofJG,temp;
+	double singlemag,mag,magt0,navg;
+	double Mag,Mag2,Mag4,Magt0,Navg;
+  
 	char Jfile[80],Gfile[80],ObservableFile[80];
 	L2 = L*L;
 	nbond = 2*L2;
@@ -65,7 +66,6 @@ int main(int argc, char **argv)
   for (i=0;i<L2;++i) spin[i] = (real(gen)>0.5 ? 1 : -1);
   for (i=0;i<M;++i) opstring[i] = -1;
 	
-	//for (i=0;i<nbond;++i) std::cout << J[i] << "\n";
 
   // Construct lattice structure
 	for (int y=0;y<L;++y){
@@ -83,8 +83,8 @@ int main(int argc, char **argv)
   // nbond to nbond+L2-1 : gamma term
   sumofJG = 0.0;
   for (i=0;i<nbond;++i){
-    CDtable[i] = J[i];
-    sumofJG += J[i];
+    CDtable[i] = 2.0*J[i];
+    sumofJG += 2.0*J[i];
   }
   for (i=0;i<L2;++i){
     CDtable[i+nbond] = G[i];
@@ -101,33 +101,74 @@ int main(int argc, char **argv)
 	// Equilibration
   for (int eq=0;eq<Equilibration;++eq){
     DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
+    AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
+  }
+  for (int eq=0;eq<Equilibration;++eq){
+    DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
 		ConstructVertexAndLink(L2,M,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
-		SwendsenWangUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex);
+		SwendsenWangUpdate(L2,M,nbond,spin,opstring,link,visitedleg,stack,vertex,first);
 		UpdateSpinAndOpstring(L2,M,nbond,spin,opstring,vertex,first,last);
     AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
-		//std::cout << M << " " << n << "\n";
   }
 	// Measurement
-	sprintf(ObservableFile,"sample%d/L%dGmax%.4fdS",sidx,L,Gmax);
+	sprintf(ObservableFile,"sample%d/L%d_beta%.4f_Gmax%.4fdS",sidx,L,beta,Gmax);
 	std::ofstream output;
 	output.open(ObservableFile,std::ios::app);
 	for (int count=0;count<repeat;++count){
-		Mag = Mag2 = Mag4 = Magt0 = 0.0;
+		Mag = Mag2 = Mag4 = Magt0 = Navg = 0.0;
 		for (int bin=0;bin<binsize;++bin){
   	  DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
 			ConstructVertexAndLink(L2,M,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
-			SwendsenWangUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex);
-			//ClusterUpdate(L2,M,n,nbond,opstring,link,visitedleg,stack,vertex);
+			std::cout << "SwendsenWang\n";
+			SwendsenWangUpdate(L2,M,nbond,spin,opstring,link,visitedleg,stack,vertex,first);
+			std::cout << "UpdateSpinAndOpstring\n";
 			UpdateSpinAndOpstring(L2,M,nbond,spin,opstring,vertex,first,last);
-			//std::cout << M << " " << n << "\n";
 			
-			// Measurement (m,mt0,U,E,...)
-			mag = mag2 = mag4 = magt0 = 0.0;
+			// Measurement (m,mt0,E,...)
+			mag = magt0 = 0.0;
 			for (i=0;i<L2;++i) magt0 += spin[i];
 			Magt0 += fabs(magt0)/L2;
+      temp = magt0;
+      for (i=0;i<M;++i){
+        if (opstring[i]>=nbond+L2){
+          flippos = opstring[i]-nbond-L2;
+          if (spin[flippos] == 1) temp -= 2;
+          else temp += 2;
+          spin[flippos] *= -1;
+        }
+        //for (int j=0;j<L2;++j) printf("%2d ",spin[j]);
+        //std::cout << "\n";
+        mag += temp;
+      }
+      mag /= (M*L2);
+      Mag += fabs(mag);
+      Mag2 += mag*mag;
+      Mag4 += mag*mag*mag*mag;
+      Navg += n;
   	}
+    Mag /= binsize;
+    Mag2 /= binsize;
+    Mag4 /= binsize;
 		Magt0 /= binsize;	
-		output << beta << " " << Magt0 << "\n";
+    Navg /= binsize;
+		//for (i=0;i<4*M;++i){
+		//	if (link[i] == -1) continue;
+		//	if (i != link[link[i]]) std::cout << i << " " << link[link[i]] << "\n";
+		//}
+		//for (i=0;i<L2;++i){
+		//	if (first[i] == -1) continue;
+		//	std::cout << (int)vertex[first[i]/4] << " " << (int)vertex[last[i]/4] << "\n";
+		//}
+    //std::cout << beta << " " << Gmax << " " << Mag << " " << Mag2 << " " << Mag4 << " " << Magt0 << " " << -Navg/(beta*L2) << "\n";
+		//std::cout << "==================================================================\n";
+		//for (i=0;i<L2;++i) printf("%d %d %d %d\n",first[i],link[first[i]],last[i],link[last[i]]);
+		output << L     << " "
+					 << beta  << " "
+					 << Gmax  << " "
+					 << Mag   << " "
+					 << Mag2  << " "
+					 << Mag4  << " "
+					 << Magt0 << "\n";
 	}
 	output.close();
 	

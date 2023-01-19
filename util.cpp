@@ -5,7 +5,7 @@ void LoadInteractionFromFile(char* filename, int size, double *coupling)
 {
   std::filesystem::path path_of_file(filename);
   if (!std::filesystem::exists(path_of_file)){
-		std::cout << "Configuration file does not exist.\n";
+		//std::cout << "Configuration file does not exist.\n";
 		std::exit(1);
   } else{
     std::ifstream inputfile(path_of_file);
@@ -53,7 +53,7 @@ void DiagonalUpdate(int L2, int M, int nbond, int *n, char *spin, int **bsites, 
           *n += 1;
         }
       }
-    } else if(op<nbond+L2){
+    } else if(op<nbond+L2){ // If constant op
       if (real(gen) < (M-(*n)+1)*dprob){
         opstring[m] = -1;
         *n -= 1;
@@ -67,13 +67,13 @@ void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &sta
 {
   int newM;
   // adjust opstring
-  if (n < (int)(0.7*(*M))) return;
+  if (n < (int)(0.85*(*M))) return;
 
   newM = 1.2*(*M);
 	// replace opstring
   int *newopstring = new int[newM];
+  for (int i=0;i<newM;++i) newopstring[i] = -1;
   for (int i=0;i<(*M);++i) newopstring[i] = opstring[i];
-  for (int i=*M;i<newM;++i) newopstring[i] = -1;
 
   delete[] opstring;
   opstring = newopstring;
@@ -91,7 +91,7 @@ void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &sta
 	newlink = NULL;
 	
 	// replace link
-	int *newstack = new int[4*newM];
+	int *newstack = new int[newM];
 	stack = newstack;
 	newstack = NULL;
 
@@ -102,26 +102,9 @@ void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &sta
 
   *M = newM;
 }
-/*
-void Partition(int L2, int M, int nbond, int *opstring, std::vector<gammaterm> *gammaseq)
-{
-	int op;
-	// clear subsequence
-	for (int i=0;i<L2;++i){
-		if (gammaseq[i].size()>0) std::vector<gammaterm>().swap(gammaseq[i]);
-	}
-
-	// divide opstring into subsequences
-  for (int m=0;m<M;++m){
-		op = opstring[m];	
-    if (op >= nbond) gammaseq[(op-nbond)%L2].push_back(gammaterm(m,(op-nbond)/L2));
-  }
-}
-*/
 
 void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, int* opstring, char* vertex, int* link, int* first, int* last, int* stack)
 {
-	//int i,m,n,op,s1,s2;
 	int i,s1,s2,v0,v1,v2,p;
 	int op,sp;
 	// Initialize first and last
@@ -133,9 +116,8 @@ void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, 
 	for (v0=0;v0<4*M;v0+=4){
 		p = v0/4;
 		op = opstring[p];
-		if (op==-1){
-			// ACtion for empty operator
-		} else if (op<nbond){
+		if (op==-1) continue;
+		if (op<nbond){
 			// Ising term
 			s1 = bsites[0][op];
 			s2 = bsites[1][op];
@@ -162,7 +144,7 @@ void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, 
 			if (v1 != -1){
 				link[v1] = v0;
 				link[v0] = v1;
-			} else first[op] = v0+1;
+			} else first[op] = v0;
 			last[op] = v0+2;
 			if (spin[op]>0) vertex[p] = 2;
 			else vertex[p] = 3;
@@ -174,7 +156,7 @@ void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, 
 			if (v1 != -1){
 				link[v1] = v0;
 				link[v0] = v1;
-			} else first[op] = v0+1;
+			} else first[op] = v0;
 			last[op] = v0+2;
 			if (spin[op]>0) vertex[p] = 4;
 			else vertex[p] = 5;
@@ -191,7 +173,7 @@ void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, 
 	}
 }
 
-void SwendsenWangUpdate(int L2,int M,int nbond,int *opstring,int *link,char *visitedleg,int *stack,char *vertex)
+void SwendsenWangUpdate(int L2,int M,int nbond,char *spin,int *opstring,int *link,char *visitedleg,int *stack,char *vertex,int *first)
 {
 	int i,v,leg,nseed;
 	std::vector<int> seedlist;
@@ -206,9 +188,11 @@ void SwendsenWangUpdate(int L2,int M,int nbond,int *opstring,int *link,char *vis
 	while(seedlist.size()>0){	
 		leg = seedlist.back();
 		seedlist.pop_back();
+
 		if (real(gen)<0.5) SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlist,leg,true);
 		else SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlist,leg,false);
 	}
+  for (i=0;i<L2;++i) if (first[i] == -1) spin[i] *= -1;
 	std::vector<int>().swap(seedlist);
 }
 
@@ -220,73 +204,38 @@ void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char *vi
 	// pick one of the legs
 	
 	// start cluster spanning process
-	visitedleg[leg] = 1;
-	pos = leg/4;
-	legidx = leg%4;
 	stack[sp] = leg;
 	sp++;
-	if (vertex[pos]/2 == 0){
-		for (l=0;l<4;++l){
-			if (visitedleg[4*pos+l]==0){
-				stack[sp] = 4*pos+l;
-				sp++;
-				//if (sp>spmax) spmax=sp;
-			}
-		}
-		// update vertex type
-		vertex[pos] = (vertex[pos]+1)%2;
-	} else if (vertex[pos]/2 == 1){
-		if (legidx==0){
-//////////////////////////// Should add new seed to SW list
-			if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
-			if (AllowFlip){
-				if (vertex[pos] == 2) vertex[pos] = 4;
-				else vertex[pos] = 5;
-			}
-		} else{
-			if (visitedleg[4*pos] == 0) seedlist.push_back(4*pos);
-			if (AllowFlip){
-				if (vertex[pos] == 2) vertex[pos] = 5;
-				else vertex[pos] = 4;
-			}
-		}
-	} else{
-		if (legidx==0){
-			if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
-			if (AllowFlip){
-				if (vertex[pos] == 4) vertex[pos] = 2;
-				else vertex[pos] = 3;
-			}
-		} else{
-			if (visitedleg[4*pos] == 0) seedlist.push_back(4*pos);
-			if (AllowFlip){
-				if (vertex[pos] == 4) vertex[pos] = 3;
-				else vertex[pos] = 2;
-			}
-		}
-	}
-
 	while(sp){
-		leg = link[stack[--sp]];
+    std::cout << "selected leg " << leg << "\n";
+    std::cout << sp << " " << seedlist.size() << "\n";
+		sp--;
+		leg = stack[sp];
 		if (visitedleg[leg] == 1) continue;
 		legidx = leg%4;
 		pos = leg/4;
+		printf("pos: %d, legidx: %d\n",pos,legidx);
 		visitedleg[leg] = 1;
 		
 		// If vertex is Ising type	
 		if (vertex[pos]/2 == 0){
-			// add all leg to stack
-			for (l=0;l<4;++l){
-				if (visitedleg[4*pos+l]==0){
-					stack[sp] = 4*pos+l;
+      std::cout << "Ising\n";
+		  for (l=0;l<4;++l){
+        visitedleg[4*pos+l] = 1;
+        if (visitedleg[link[4*pos+l]] == 0){
+					stack[sp] = link[4*pos+l];
 					sp++;
-					//if (sp>spmax) spmax=sp;
 				}
-			}
-			// update vertex type
+		  }
 			vertex[pos] = (vertex[pos]+1)%2;
+			// update vertex type
 		} else if (vertex[pos]/2 == 1){ // If vertex is constant type
+      std::cout << "Constant\n";
 			//if (visitedleg[leg] == 0) stack[sp++] = link[leg];
+			if (visitedleg[link[leg]] == 0){
+				stack[sp] = leg;
+				sp++;
+			}
 			if (legidx==0){
 				if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
 				if (AllowFlip){
@@ -302,7 +251,12 @@ void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char *vi
 			}
 		// If vertex is flip type
 		} else{
+      std::cout << "Flip\n";
 			//if (visitedleg[leg] == 0) stack[sp++] = link[leg];
+			if (visitedleg[link[leg]] == 0){
+				stack[sp] = leg;
+				sp++;
+			}
 			if (legidx == 0){
 				if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
 				if (AllowFlip){
@@ -317,6 +271,7 @@ void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char *vi
 				}
 			}
 		}
+		std::cout << "next leg\n";
 	}
 }
 
@@ -325,7 +280,6 @@ void UpdateSpinAndOpstring(int L2, int M, int nbond, char* spin, int *opstring, 
 	int i,m;
 	// update spin
 	for (i=0;i<L2;++i){
-		//std::cout << first[i] << " " << (int)vertex[first[i]/4] << " " << (int)spin[i] << " ";
 		switch (vertex[first[i]/4])
 		{
 			case 0: spin[i] = 1; break;
