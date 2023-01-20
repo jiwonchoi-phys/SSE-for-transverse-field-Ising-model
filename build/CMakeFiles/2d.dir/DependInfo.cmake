@@ -8,8 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/jiwon/OneDrive - pukyong.ac.kr/Works/SSE-for-transverse-field-Ising-model/2d.cpp" "CMakeFiles/2d.dir/2d.cpp.o" "gcc" "CMakeFiles/2d.dir/2d.cpp.o.d"
-  "/Users/jiwon/OneDrive - pukyong.ac.kr/Works/SSE-for-transverse-field-Ising-model/util.cpp" "CMakeFiles/2d.dir/util.cpp.o" "gcc" "CMakeFiles/2d.dir/util.cpp.o.d"
+  "/home/jiwon/OneDrive/Works/SSE-for-transverse-field-Ising-model/2d.cpp" "CMakeFiles/2d.dir/2d.cpp.o" "gcc" "CMakeFiles/2d.dir/2d.cpp.o.d"
+  "/home/jiwon/OneDrive/Works/SSE-for-transverse-field-Ising-model/util.cpp" "CMakeFiles/2d.dir/util.cpp.o" "gcc" "CMakeFiles/2d.dir/util.cpp.o.d"
   )
 
 # Targets to which this target links.

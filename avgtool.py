@@ -13,6 +13,4 @@ def AverageAndExport(filename_pattern,export_filename,fmt='%.6e'):
     avglist = AverageAll(filename_pattern)
     np.savetxt(export_filename,avglist,fmt=fmt)
 
-if __name__=="__main__":
-    AverageAndExport("sample0/*dS","sample0avg")
-    #AverageAndExport("sample0/*dS")
+AverageAndExport("sample0/*dS","sample0avg")

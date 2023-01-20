@@ -1,8 +1,9 @@
 #include "util.hpp"
+#include <chrono>
 
 /*****************************************************************************
  * 
- *                  Edited by Jiwon Choi Jan 6 2023
+ *                  Edited by Jiwon Choi Jan 20 2023
  *
  *      File description:
  *      Stochastic Series Expansion(SSE) for the one-dimensional random
@@ -53,15 +54,13 @@ int main(int argc, char **argv)
 	int *stack = new int[4*M];
 	char *visitedleg = new char[4*M];
 
-  //std::vector<int> *constterm = new std::vector<int>[L2];
-  //std::vector<int> *flipterm = new std::vector<int>[L2];
-
   // Load interaction and transverse-field from file
 	sprintf(Jfile,"sample%d/Jconfig",sidx);
 	sprintf(Gfile,"sample%d/Gconfig",sidx);
   LoadInteractionFromFile(Jfile,2*L2,J);
   LoadInteractionFromFile(Gfile,L2,G);
   for (i=0;i<L2;++i) G[i] *= Gmax;
+
   // Initialize spin configuration
   for (i=0;i<L2;++i) spin[i] = (real(gen)>0.5 ? 1 : -1);
   for (i=0;i<M;++i) opstring[i] = -1;
@@ -104,11 +103,32 @@ int main(int argc, char **argv)
     AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
   }
   for (int eq=0;eq<Equilibration;++eq){
+    std::chrono::system_clock::time_point start=std::chrono::system_clock::now();
     DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
+    std::chrono::system_clock::time_point end=std::chrono::system_clock::now();
+    std::chrono::duration<double> sec = end-start;
+    printf("DiagonalUpdate: %.4f\n",sec);
+
+    start=std::chrono::system_clock::now();
 		ConstructVertexAndLink(L2,M,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
+    end=std::chrono::system_clock::now();
+    sec = end-start;
+    printf("ConstructVertexAndLink: %.4f\n",sec);
+    start=std::chrono::system_clock::now();
 		SwendsenWangUpdate(L2,M,nbond,spin,opstring,link,visitedleg,stack,vertex,first);
+    end=std::chrono::system_clock::now();
+    sec = end-start;
+    printf("SwendsenWangUpdate: %.4f\n",sec);
+    start=std::chrono::system_clock::now();
 		UpdateSpinAndOpstring(L2,M,nbond,spin,opstring,vertex,first,last);
+    end=std::chrono::system_clock::now();
+    sec = end-start;
+    printf("UpdateSpinAndOpstring: %.4f\n",sec);
+    start=std::chrono::system_clock::now();
     AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
+    end=std::chrono::system_clock::now();
+    sec = end-start;
+    printf("AdjustM: %.4f\n",sec);
   }
 	// Measurement
 	sprintf(ObservableFile,"sample%d/L%d_beta%.4f_Gmax%.4fdS",sidx,L,beta,Gmax);
@@ -119,9 +139,7 @@ int main(int argc, char **argv)
 		for (int bin=0;bin<binsize;++bin){
   	  DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
 			ConstructVertexAndLink(L2,M,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
-			std::cout << "SwendsenWang\n";
 			SwendsenWangUpdate(L2,M,nbond,spin,opstring,link,visitedleg,stack,vertex,first);
-			std::cout << "UpdateSpinAndOpstring\n";
 			UpdateSpinAndOpstring(L2,M,nbond,spin,opstring,vertex,first,last);
 			
 			// Measurement (m,mt0,E,...)
@@ -136,8 +154,6 @@ int main(int argc, char **argv)
           else temp += 2;
           spin[flippos] *= -1;
         }
-        //for (int j=0;j<L2;++j) printf("%2d ",spin[j]);
-        //std::cout << "\n";
         mag += temp;
       }
       mag /= (M*L2);
@@ -151,24 +167,22 @@ int main(int argc, char **argv)
     Mag4 /= binsize;
 		Magt0 /= binsize;	
     Navg /= binsize;
-		//for (i=0;i<4*M;++i){
-		//	if (link[i] == -1) continue;
-		//	if (i != link[link[i]]) std::cout << i << " " << link[link[i]] << "\n";
-		//}
-		//for (i=0;i<L2;++i){
-		//	if (first[i] == -1) continue;
-		//	std::cout << (int)vertex[first[i]/4] << " " << (int)vertex[last[i]/4] << "\n";
-		//}
-    //std::cout << beta << " " << Gmax << " " << Mag << " " << Mag2 << " " << Mag4 << " " << Magt0 << " " << -Navg/(beta*L2) << "\n";
-		//std::cout << "==================================================================\n";
-		//for (i=0;i<L2;++i) printf("%d %d %d %d\n",first[i],link[first[i]],last[i],link[last[i]]);
+  //  std::cout << L     << " "
+	//				 << beta  << " "
+	//				 << Gmax  << " "
+	//				 << Mag   << " "
+	//				 << Mag2  << " "
+	//				 << Mag4  << " "
+	//				 << Magt0 << " "
+	//				 << Navg  << "\n";
 		output << L     << " "
 					 << beta  << " "
 					 << Gmax  << " "
 					 << Mag   << " "
 					 << Mag2  << " "
 					 << Mag4  << " "
-					 << Magt0 << "\n";
+					 << Magt0 << " "
+					 << Navg  << "\n";
 	}
 	output.close();
 	
