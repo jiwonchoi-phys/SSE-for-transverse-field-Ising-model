@@ -23,7 +23,7 @@ void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &sta
 void ConstructVertexAndLink(int L2, int M,  int nbond, char* spin, int** bsites, int* opstring, char* vertex, int* link, int* first, int* last, int* stack);
 void SwendsenWangUpdate(int L2,int M,int nbond,char *spin,int *opstring,int *link,char* &visitedleg,int *stack,char *vertex,int *first);
 //void LoopUpdate(int L2,int M,int n,int nbond,int *opstring,int *link,char *visitedleg,int *stack,char *vertex);
-void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &visitedleg,int *stack,char *vertex,std::vector<int> &seedlist,int leg,bool AllowFlip);
+void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &visitedleg,int *stack,char* &vertex,std::vector<int> &seedlist,int leg,bool AllowFlip);
 //void Partition(int L2, int M, int nbond, int *opstring, std::vector<gammaterm> *gammaseq);
 void UpdateSpinAndOpstring(int L2, int M, int nbond, char* spin, int *opstring, char* vertex, int* first, int* last);
 bool Visited(int leg, char* visitedleg, int* link);

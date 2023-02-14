@@ -3,7 +3,7 @@
 
 /*****************************************************************************
  * 
- *                  Edited by Jiwon Choi Jan 20 2023
+ *                  Edited by Jiwon Choi Feb 14 2023
  *
  *      File description:
  *      Stochastic Series Expansion(SSE) for the one-dimensional random
@@ -55,16 +55,16 @@ int main(int argc, char **argv)
 	char *visitedleg = new char[4*M];
 
   // Load interaction and transverse-field from file
-	sprintf(Jfile,"sample%d/Jconfig",sidx);
-	sprintf(Gfile,"sample%d/Gconfig",sidx);
-  LoadInteractionFromFile(Jfile,2*L2,J);
-  LoadInteractionFromFile(Gfile,L2,G);
-  for (i=0;i<L2;++i) G[i] *= Gmax;
+	//sprintf(Jfile,"sample%d/Jconfig",sidx);
+	//sprintf(Gfile,"sample%d/Gconfig",sidx);
+  //LoadInteractionFromFile(Jfile,2*L2,J);
+  //LoadInteractionFromFile(Gfile,L2,G);
+	for (i=0;i<nbond;++i) J[i] = 1.0;
+  for (i=0;i<L2;++i) G[i] = Gmax;
 
   // Initialize spin configuration
   for (i=0;i<L2;++i) spin[i] = (real(gen)>0.5 ? 1 : -1);
   for (i=0;i<M;++i) opstring[i] = -1;
-	
 
   // Construct lattice structure
 	for (int y=0;y<L;++y){
@@ -91,47 +91,22 @@ int main(int argc, char **argv)
   }
   for (i=0;i<nbond+L2-1;++i) CDtable[i+1] += CDtable[i];
   for (i=0;i<nbond+L2;++i) CDtable[i] /= sumofJG;
-
   beta_sumofJG = beta*sumofJG;
-  
   // nbond to nbond+L2-1 : gamma term
   // nbond+L2 to nbond+2*L2-1 : Spin-flipping term
 
 	// Equilibration
   for (int eq=0;eq<Equilibration;++eq){
     DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
-    AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
-  }
-  for (int eq=0;eq<Equilibration;++eq){
-    std::chrono::system_clock::time_point start=std::chrono::system_clock::now();
-    DiagonalUpdate(L2,M,nbond,&n,spin,bsites,opstring,CDtable,beta_sumofJG);
-    std::chrono::system_clock::time_point end=std::chrono::system_clock::now();
-    std::chrono::duration<double> sec = end-start;
-    printf("DiagonalUpdate: %.4f\n",sec);
-
-    start=std::chrono::system_clock::now();
 		ConstructVertexAndLink(L2,M,nbond,spin,bsites,opstring,vertex,link,first,last,stack);
-    end=std::chrono::system_clock::now();
-    sec = end-start;
-    printf("ConstructVertexAndLink: %.4f\n",sec);
-    start=std::chrono::system_clock::now();
 		SwendsenWangUpdate(L2,M,nbond,spin,opstring,link,visitedleg,stack,vertex,first);
-    end=std::chrono::system_clock::now();
-    sec = end-start;
-    printf("SwendsenWangUpdate: %.4f\n",sec);
-    start=std::chrono::system_clock::now();
 		UpdateSpinAndOpstring(L2,M,nbond,spin,opstring,vertex,first,last);
-    end=std::chrono::system_clock::now();
-    sec = end-start;
-    printf("UpdateSpinAndOpstring: %.4f\n",sec);
-    start=std::chrono::system_clock::now();
     AdjustM(&M,n,opstring,vertex,link,stack,visitedleg);
-    end=std::chrono::system_clock::now();
-    sec = end-start;
-    printf("AdjustM: %.4f\n",sec);
   }
+
 	// Measurement
-	sprintf(ObservableFile,"sample%d/L%d_beta%.4f_Gmax%.4fdS",sidx,L,beta,Gmax);
+	//sprintf(ObservableFile,"sample%d/L%d_beta%.4f_Gmax%.4fdS",sidx,L,beta,Gmax);
+	sprintf(ObservableFile,"L%d_beta%.4f_Gmax%.4fdS",L,beta,Gmax);
 	std::ofstream output;
 	output.open(ObservableFile,std::ios::app);
 	for (int count=0;count<repeat;++count){
@@ -167,14 +142,7 @@ int main(int argc, char **argv)
     Mag4 /= binsize;
 		Magt0 /= binsize;	
     Navg /= binsize;
-  //  std::cout << L     << " "
-	//				 << beta  << " "
-	//				 << Gmax  << " "
-	//				 << Mag   << " "
-	//				 << Mag2  << " "
-	//				 << Mag4  << " "
-	//				 << Magt0 << " "
-	//				 << Navg  << "\n";
+
 		output << L     << " "
 					 << beta  << " "
 					 << Gmax  << " "

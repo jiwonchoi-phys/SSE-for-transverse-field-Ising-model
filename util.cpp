@@ -35,40 +35,43 @@ int LowerBound(double *list, int length, double target){
 
 void DiagonalUpdate(int L2, int M, int nbond, int *n, char *spin, int **bsites, int *opstring, double *CDtable, double aprob)
 {    
-  int nop, op, b;
+  int nop, op, b,accepted,m;
   double dprob = 1/aprob;
   nop = L2+nbond;
-  for (int m=0;m<M;++m){
-    op = opstring[m];
-    if (op == -1){ // If empty, add new operator
-      if (real(gen)*(M-(*n))<aprob){
-        b = LowerBound(CDtable,nop,real(gen));
-        if (b<nbond){
-          if (spin[bsites[0][b]] == spin[bsites[1][b]]){
-            opstring[m] = b;
-            *n += 1;
-          }
-        } else{
-          opstring[m] = b;
-          *n += 1;
-        }
-      }
-    } else if(op<nbond+L2){ // If constant op
-      if (real(gen) < (M-(*n)+1)*dprob){
-        opstring[m] = -1;
-        *n -= 1;
-      }
-    // If operator is spin flip op
-    } else spin[op-nbond-L2] *= -1;
-  }
+	for (m=0;m<M;++m){
+		op = opstring[m];
+		if (op == -1){
+			if (real(gen)*(M-(*n))<aprob){
+				accepted=0;
+				while(!accepted){
+					b = LowerBound(CDtable,nop,real(gen));
+					if (b<nbond){
+						if (spin[bsites[0][b]] == spin[bsites[1][b]]){
+							opstring[m] = b;
+							accepted = 1;
+							(*n) += 1;
+						}
+					} else{
+						opstring[m] = b;
+						accepted = 1;
+						(*n) += 1;
+					}
+				}
+			}
+		} else if (op < L2+nbond){
+			if (real(gen)<(M-(*n)+1)*dprob){
+				opstring[m] = -1;
+				(*n) -= 1;
+			}
+		} else spin[op-nbond-L2] *= -1;
+	}
 }
-
 
 void AdjustM(int *M, int n, int* &opstring, char* &vertex, int* &link, int* &stack, char* &visitedleg)
 {
   int newM;
   // adjust opstring
-  if (n < (int)(0.85*(*M))) return;
+  if (n < (int)(0.8*(*M))) return;
 
   newM = 1.2*(*M);
 	// replace opstring
@@ -185,86 +188,61 @@ void ConstructVertexAndLink(int L2, int M, int nbond, char* spin, int** bsites, 
 
 void SwendsenWangUpdate(int L2,int M,int nbond,char *spin,int *opstring,int *link,char* &visitedleg,int *stack,char *vertex,int *first)
 {
-	int i,l,v,seedleg;
-  // Initialize all legs to unvisited state.
+	int i,leg;
+	std::vector<int> seedlegs;
   for (i=0;i<4*M;++i) visitedleg[i] = 0;
-	// pick a seed leg
-  // visit all spins
-  for (l=0;l<L2;++l){
-    // If spin[l] is not isolated
-    if (first[l] > -1){
-      // If spin[l] is not visited
-      if (visitedleg[first[l]] == 0){
-        // perform SW update
-        //printf("spin%2d not visited\n",l);
-	      std::vector<int> seedlist;
-        seedleg = first[l];
-        seedlist.push_back(seedleg);
-        //std::cout << "start SW algorithm with seed leg: " << seedleg << "\n";
-        // repeat single cluster algorithm until 'seedlist' become emtpy
-	      while(seedlist.size()>0){	
-	      	seedleg = seedlist.back();
-	      	seedlist.pop_back();
-          //std::cout << "start single cluster algorithm with seed leg: " << seedleg << "\n";
-          //std::cout << "length of seedlist: " << seedlist.size() << "\n";
-
-          // flip cluster with probability 1/2
-	      	if (real(gen)<0.5) SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlist,seedleg,true);
-	      	else SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlist,seedleg,false);
-	      }
-	      std::vector<int>().swap(seedlist);
-      }
-      // If spin[k] is isolated
-    } else {if (real(gen)<0.5) spin[l]*=-1;}
-  }
-  //for (i=0;i<L2;++i) std::cout << (int)visitedleg[first[i]] << " ";
-  //std::cout << "\n";
+	for (i=0;i<L2;++i){
+		if (first[i] == -1){
+			if (real(gen)<0.5) spin[i] *= -1;
+		}
+		else{
+			seedlegs.push_back(first[i]);
+		}
+	}
+	while(seedlegs.size()>0){
+		leg = seedlegs.back();
+		seedlegs.pop_back();
+		if (visitedleg[leg] == 1) continue;
+		if (real(gen)<0.5) SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlegs,leg,true);
+		else SingleClusterUpdate(L2,M,nbond,opstring,link,visitedleg,stack,vertex,seedlegs,leg,false);
+	}
 }
 
-void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &visitedleg,int *stack,char *vertex,std::vector<int> &seedlist,int leg,bool AllowFlip)
+void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &visitedleg,int *stack,char* &vertex,std::vector<int> &seedlist,int leg,bool AllowFlip)
 {
 	int i,l,pos,legidx;
 	int sp=0;
 	int spmax=1;
-
-  // start with given seed leg
-	
-  // add seed leg to stack
+	int adjacentleg;
 	stack[sp] = leg;
   sp++;
 	while(sp){
-    //std::cout << "selected leg " << leg << "\n";
     sp--;
 		leg = stack[sp];
     // If leg have been visited, ignore it.
 		if (visitedleg[leg] == 1) continue;
-    //std::cout << sp << " " << seedlist.size() << "\n";
 		legidx = leg%4;
 		pos = leg/4;
-		//printf("pos: %d, legidx: %d\n",pos,legidx);
     // mark this leg to be visited.
 		visitedleg[leg] = 1;
-		
+		adjacentleg = (legidx == 0 ? 4*pos+2 : 4*pos);
+
 		// If vertex is Ising operator	
-		if (vertex[pos]/2 == 0){
-      //std::cout << "Ising\n";
-      // all legs corresponding to this vertex will not be visited anymore.
-		  for (l=0;l<4;++l){
-        visitedleg[4*pos+l] = 1;
-        // if linked leg was not visited yet, add it to stack
-        if (visitedleg[link[4*pos+l]] == 0){
-          stack[sp++] = link[4*pos+l];
-          //std::cout << "current link: " << 4*pos+l << ", added to stack: " << link[4*pos+l] << "\n";
-        }
-		  }
+		if (vertex[pos] < 2){
       // if spin-flip is allowed, then change type of vertex
 			if (AllowFlip) vertex[pos] = (vertex[pos]+1)%2;
+      // all legs corresponding to this vertex will not be visited anymore.
+		  for (l=0;l<4;++l){
+				// do not visit adjacent legs again
+        visitedleg[4*pos+l] = 1;
+        // if linked leg was not visited yet, add it to stack
+        if (visitedleg[link[4*pos+l]] == 0) stack[sp++] = link[4*pos+l];
+		  }
 
     // If vertex is constant operator 
-		} else if (vertex[pos]/2 == 1){ 
-      //std::cout << "Constant\n";
+		} else if (vertex[pos] < 4){ 
       // if linked leg is not visited, add it to stack
-			if (visitedleg[link[leg]] == 0) stack[sp++] = leg;
+			if (visitedleg[link[leg]] == 0) stack[sp++] = link[leg];
       // if leg from lower side
 			if (legidx==0){
 				if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
@@ -283,9 +261,8 @@ void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &v
 
 		// If vertex is spin-flip operator
 		} else{
-      //std::cout << "Flip\n";
       // if linked leg is not visited, add it to stack
-			if (visitedleg[link[leg]] == 0) stack[sp++] = leg;
+			if (visitedleg[link[leg]] == 0) stack[sp++] = link[leg];
       // if leg from lower side
 			if (legidx == 0){
 				if (visitedleg[4*pos+2] == 0) seedlist.push_back(4*pos+2);
@@ -302,7 +279,6 @@ void SingleClusterUpdate(int L2,int M,int nbond,int *opstring,int *link,char* &v
 				}
 			}
 		}
-		//std::cout << "next leg(left: " << sp <<")\n";
 	}
 }
 
@@ -311,6 +287,7 @@ void UpdateSpinAndOpstring(int L2, int M, int nbond, char* spin, int *opstring, 
 	int i,m;
 	// update spin
 	for (i=0;i<L2;++i){
+		if (first[i] == -1) continue;
 		switch (vertex[first[i]/4])
 		{
 			case 0: spin[i] = 1; break;

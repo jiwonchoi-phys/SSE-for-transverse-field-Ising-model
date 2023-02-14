@@ -1,5 +1,7 @@
 import numpy as np
-import glob
+import glob,sys
+
+L = int(sys.argv[1])
 
 def AverageAll(filename_pattern):
     flist = glob.glob(filename_pattern)
@@ -13,4 +15,4 @@ def AverageAndExport(filename_pattern,export_filename,fmt='%.6e'):
     avglist = AverageAll(filename_pattern)
     np.savetxt(export_filename,avglist,fmt=fmt)
 
-AverageAndExport("sample0/*dS","sample0avg")
+AverageAndExport("L{}*dS".format(L),"L{}avg".format(L))
